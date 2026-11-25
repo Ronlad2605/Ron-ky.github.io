@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="refresh" content="0;url=[GOOGLE_DRIVE_URL]">
+  <title>[SHORTCUT_TITLE]</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f4f6f9;
+      color: #1a1a1a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 1rem;
+      text-align: center;
+    }
+    a {
+      color: #1a73e8;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+  <!--
+    EDIT THESE VALUES:
+    - GOOGLE_DRIVE_URL  → the full Google Drive link
+    - SHORTCUT_TITLE    → browser tab title
+  -->
+</head>
+<body>
+  <p>
+    Redirecting…<br>
+    <a href="[GOOGLE_DRIVE_URL]">Open in Google Drive</a>
+  </p>
+
+  <script>
+    window.location.replace("[GOOGLE_DRIVE_URL]");
+  </script>
+</body>
+</html>
