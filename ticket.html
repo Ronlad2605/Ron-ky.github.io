@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能雙語叫號系統 - 櫃台工作人員專用</title>
+    <!-- Tailwind CSS 3.x CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=Noto+Sans+TC:wght@500;700;900&display=swap');
+        body {
+            font-family: 'Noto Sans TC', 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col justify-between">
+
+    <!-- 頂部標題列 -->
+    <header class="bg-slate-800 border-b border-slate-700 py-4 px-6 shadow-md">
+        <div class="max-w-5xl mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="bg-blue-600 text-white p-2 rounded-lg font-bold text-xl">📢</div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-wide">雙語智能叫號系統</h1>
+                    <p class="text-xs text-slate-400">Cantonese & English Bilingual Queue Calling System</p>
+                </div>
+            </div>
+            <div id="statusBadge" class="px-4 py-1.5 rounded-full text-sm font-semibold bg-slate-700 text-slate-300 transition-all duration-300">
+                ⚪ 待機中 (Standby)
+            </div>
+        </div>
+    </header>
+
+    <!-- 主要操作與顯示區 -->
+    <main class="max-w-4xl w-full mx-auto p-6 flex-grow flex flex-col justify-center space-y-8">
+
+        <!-- 巨大號碼顯示看板 -->
+        <div id="cardBox" class="bg-gradient-to-b from-slate-800 to-slate-850 border border-slate-700 rounded-3xl p-8 text-center shadow-2xl transition-all duration-300">
+            <p class="text-sm uppercase tracking-widest text-slate-400 font-semibold mb-2">當前叫號 / CURRENT TICKET</p>
+            <div id="displayNumber" class="text-8xl md:text-9xl font-black text-amber-400 tracking-wider my-4 drop-shadow-[0_5px_15px_rgba(251,191,36,0.3)]">
+                ----
+            </div>
+            <div id="subtitleDisplay" class="text-slate-400 text-lg md:text-xl font-medium mt-2 h-8">
+                請輸入籌號並開始叫號
+            </div>
+        </div>
+
+        <!-- 控制面板 -->
+        <div class="bg-slate-800/80 backdrop-blur border border-slate-700/80 rounded-2xl p-6 shadow-xl space-y-6">
+            
+            <!-- 輸入列 -->
+            <div class="flex flex-col md:flex-row gap-4 items-center">
+                <div class="w-full md:w-1/2">
+                    <label for="ticketInput" class="block text-sm font-medium text-slate-300 mb-2">輸入籌號 (Ticket Number)：</label>
+                    <input type="text" id="ticketInput" placeholder="例如: 1234 或 A01" 
+                           class="w-full bg-slate-900 border-2 border-slate-600 focus:border-blue-500 rounded-xl px-5 py-4 text-3xl font-bold text-center text-white tracking-widest outline-none transition">
+                </div>
+
+                <!-- 快速增減捷徑 (工作人員專用) -->
+                <div class="w-full md:w-1/2 flex flex-col justify-end">
+                    <span class="block text-sm font-medium text-slate-300 mb-2">快速操作：</span>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button onclick="adjustNumber(-1)" class="bg-slate-700 hover:bg-slate-600 active:scale-95 text-white font-bold py-3 rounded-xl transition text-lg">➖ 上一號</button>
+                        <button onclick="adjustNumber(1)" class="bg-slate-700 hover:bg-slate-600 active:scale-95 text-white font-bold py-3 rounded-xl transition text-lg">➕ 下一號</button>
+                        <button onclick="clearInput()" class="bg-slate-700 hover:bg-red-900/50 active:scale-95 text-red-400 font-bold py-3 rounded-xl transition text-sm">清除</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 執行動作按鈕 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                <button onclick="startCalling()" 
+                        class="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white text-xl font-bold py-4 px-8 rounded-xl shadow-lg shadow-emerald-900/30 transition flex items-center justify-center space-x-2">
+                    <span>▶ 確定 / 開始叫號</span>
+                </button>
+                <button onclick="stopCalling()" 
+                        class="w-full bg-rose-600 hover:bg-rose-500 active:scale-[0.98] text-white text-xl font-bold py-4 px-8 rounded-xl shadow-lg shadow-rose-900/30 transition flex items-center justify-center space-x-2">
+                    <span>⏹ 停止叫號</span>
+                </button>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- 底部版權與提示 -->
+    <footer class="text-center py-4 text-xs text-slate-500 border-t border-slate-800">
+        櫃台高效叫號系統 • 支援語音引擎自動優化與循環播音
+    </footer>
+
+    <!-- 核心 JavaScript 邏輯 -->
+    <script>
+        let isRunning = false;
+        let timeoutId = null;
+        let voices = [];
+
+        // 初始化語音清單
+        function loadVoices() {
+            voices = window.speechSynthesis.getVoices();
+        }
+        
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+        loadVoices();
+
+        // 監聽 Enter 鍵直接開始叫號
+        document.getElementById('ticketInput').addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                startCalling();
+            }
+        });
+
+        // 快速加減數字助手 (若輸入純數字則可自動遞增減)
+        function adjustNumber(delta) {
+            const input = document.getElementById('ticketInput');
+            let val = input.value.trim();
+            let num = parseInt(val, 10);
+            if (!isNaN(num)) {
+                let newNum = num + delta;
+                if (newNum < 0) newNum = 0;
+                // 保持原本長度格式 (如 005)
+                let padLength = val.length;
+                input.value = String(newNum).padStart(padLength, '0');
+            }
+        }
+
+        function clearInput() {
+            document.getElementById('ticketInput').value = '';
+            document.getElementById('ticketInput').focus();
+        }
+
+        // 開始叫號
+        function startCalling() {
+            const num = document.getElementById('ticketInput').value.trim();
+            if (!num) {
+                alert('請先輸入有效籌號！');
+                document.getElementById('ticketInput').focus();
+                return;
+            }
+
+            // 若原本正在叫號，先中斷舊循環
+            stopCalling(false);
+
+            isRunning = true;
+            document.getElementById('displayNumber').innerText = num;
+            
+            // 更新 UI 狀態：叫號中特效
+            const badge = document.getElementById('statusBadge');
+            badge.className = "px-4 py-1.5 rounded-full text-sm font-semibold bg-rose-600 text-white animate-pulse shadow-lg shadow-rose-600/50";
+            badge.innerText = "🔴 叫號循環廣播中...";
+
+            const cardBox = document.getElementById('cardBox');
+            cardBox.classList.add('ring-4', 'ring-rose-500/50', 'border-rose-500');
+
+            // 啟動無限循環叫號
+            loopCall(num);
+        }
+
+        // 停止叫號
+        function stopCalling(resetDisplay = true) {
+            isRunning = false;
+            window.speechSynthesis.cancel();
+            if (timeoutId) {
+                clearTimeout(timeoutId);
+                timeoutId = null;
+            }
+
+            const badge = document.getElementById('statusBadge');
+            badge.className = "px-4 py-1.5 rounded-full text-sm font-semibold bg-slate-700 text-slate-300";
+            badge.innerText = "⚪ 待機中 (Standby)";
+
+            const cardBox = document.getElementById('cardBox');
+            cardBox.classList.remove('ring-4', 'ring-rose-500/50', 'border-rose-500');
+
+            document.getElementById('subtitleDisplay').innerText = "叫號已停止";
+            if (resetDisplay) {
+                document.getElementById('displayNumber').innerText = "----";
+            }
+        }
+
+        // 核心迴圈邏輯：廣東話 -> 停頓0.8s -> 英文 -> 停頓1.5s -> 重複
+        async function loopCall(num) {
+            if (!isRunning) return;
+
+            // 1. 廣東話語音內容
+            const cantoText = `${num}，下一個到您，有冇 ${num}？有冇 ${num}？`;
+            document.getElementById('subtitleDisplay').innerText = `粵：${cantoText}`;
+            await speakText(cantoText, 'zh-HK', 0.88, 1.02);
+
+            if (!isRunning) return;
+            // 停頓 0.8 秒
+            await sleep(800);
+
+            if (!isRunning) return;
+
+            // 2. 英文語音內容
+            const engText = `Number ${num}, next, is number ${num} here? Is number ${num} here?`;
+            document.getElementById('subtitleDisplay').innerText = `英：${engText}`;
+            await speakText(engText, 'en-US', 0.88, 1.02);
+
+            if (!isRunning) return;
+            // 停頓 1.5 秒後進入下一次循環
+            await sleep(1500);
+
+            if (isRunning) {
+                loopCall(num);
+            }
+        }
+
+        // 延遲 Helper
+        function sleep(ms) {
+            return new Promise(resolve => {
+                timeoutId = setTimeout(resolve, ms);
+            });
+        }
+
+        // 語音朗讀 Promise 包裝
+        function speakText(text, lang, rate, pitch) {
+            return new Promise((resolve) => {
+                if (!isRunning) {
+                    resolve();
+                    return;
+                }
+
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = lang;
+                utterance.rate = rate;   // 0.85 - 0.9 稍微放慢以確保咬字清晰
+                utterance.pitch = pitch; // 1.0 - 1.05 確保聲音響亮
+                utterance.volume = 1.0;  // 最高音量
+
+                // 智慧挑選最佳發音人（優先選取粵語/本地高質量語音包）
+                if (voices.length === 0) {
+                    loadVoices();
+                }
+
+                let selectedVoice = null;
+                if (lang.startsWith('zh')) {
+                    selectedVoice = voices.find(v => v.lang === 'zh-HK' || v.lang.includes('Cantonese') || v.name.includes('Sin-Ji') || v.name.includes('HiuGa') || v.name.includes('Hong Kong'));
+                    if (!selectedVoice) {
+                        selectedVoice = voices.find(v => v.lang.startsWith('zh'));
+                    }
+                } else {
+                    selectedVoice = voices.find(v => v.lang === 'en-US' || v.lang === 'en-GB');
+                    if (!selectedVoice) {
+                        selectedVoice = voices.find(v => v.lang.startsWith('en'));
+                    }
+                }
+
+                if (selectedVoice) {
+                    utterance.voice = selectedVoice;
+                }
+
+                utterance.onend = () => {
+                    resolve();
+                };
+
+                utterance.onerror = (e) => {
+                    console.warn('Speech synthesis error:', e);
+                    resolve();
+                };
+
+                window.speechSynthesis.speak(utterance);
+            });
+        }
+    </script>
+</body>
+</html>
